@@ -15,20 +15,23 @@ public:
     string publisher;
     float gameSize;
     int downloads;
+    int height;
     GameNode* left;
     GameNode* right;
 
-    GameNode() : left(nullptr), right(nullptr) {}
+    GameNode() : left(nullptr), right(nullptr) {
+        height=-1;
+    }
 };
 
 
 class GameDataBst {
 private:
     GameNode* root;
-
     void insert(GameNode*& root, GameNode* newNode) {
         if (root == nullptr) {
             root = newNode;
+            return;
         } else if (newNode->Game_ID < root->Game_ID) {
             insert(root->left, newNode);
         } else if (newNode->Game_ID > root->Game_ID) {
@@ -37,7 +40,60 @@ private:
             cout << "Game already exists" << endl;
             delete newNode;
         }
+        root->height= max(getHeight(root->left),getHeight(root->right))+1;
+        if(getBalance(root)==2){
+            if(getBalance(root->left)>=0){
+                root=rotateRight(root);
+            }
+            else{
+                root->left=rotateLeft(root->left);
+                root=rotateRight(root);
+            }
+        }
+        else if(getBalance(root)==-2){
+            if(getBalance(root->right)<=0){
+                root=rotateLeft(root);
+            }
+            else{
+                root->right=rotateRight(root->right);
+                root=rotateLeft(root);
+            }
+        }
     }
+    // Perform a right rotation on the subtree rooted with y
+GameNode* rotateRight(GameNode* y) {
+    GameNode* x = y->left;
+    GameNode* T2 = x->right;
+
+    // Perform rotation
+    x->right = y;
+    y->left = T2;
+
+    // Update heights
+    y->height = max(getHeight(y->left), getHeight(y->right)) + 1;
+    x->height = max(getHeight(x->left), getHeight(x->right)) + 1;
+
+    // Return new root
+    return x;
+}
+
+// Perform a left rotation on the subtree rooted with x
+GameNode* rotateLeft(GameNode* x) {
+    GameNode* y = x->right;
+    GameNode* T2 = y->left;
+
+    // Perform rotation
+    y->left = x;
+    x->right = T2;
+
+    // Update heights
+    x->height = max(getHeight(x->left), getHeight(x->right)) + 1;
+    y->height = max(getHeight(y->left), getHeight(y->right)) + 1;
+
+    // Return new root
+    return y;
+}
+
     GameNode* getSmallest(GameNode* root) {
         if (root == nullptr) return nullptr;
         while (root->left != nullptr) root = root->left;
@@ -69,12 +125,52 @@ private:
                 root->gameSize = smallest->gameSize;
                 root->downloads = smallest->downloads;
                 root->right = deleteNode(root->right, smallest->Game_ID);
+                
             }
         }
-        return root;
+    // Update the height of the current node
+    root->height = max(getHeight(root->left), getHeight(root->right)) + 1;
+
+    // Get balance factor to check if the node became unbalanced
+    int balance = getBalance(root);
+
+    // Left Left Case
+    if (balance > 1 && getBalance(root->left) >= 0) {
+        return rotateRight(root);
     }
+
+    // Left Right Case
+    if (balance > 1 && getBalance(root->left) < 0) {
+        root->left = rotateLeft(root->left);
+        return rotateRight(root);
+    }
+
+    // Right Right Case
+    if (balance < -1 && getBalance(root->right) <= 0) {
+        return rotateLeft(root);
+    }
+
+    // Right Left Case
+    if (balance < -1 && getBalance(root->right) > 0) {
+        root->right = rotateRight(root->right);
+        return rotateLeft(root);
+    }
+    return root;
+}
+
+
     GameNode* search(GameNode* root, const string& Id) {
-        if (root == nullptr || root->Game_ID == Id) {
+        if (root == nullptr) {
+            cout << "Game not found, reached a leaf node." << endl;
+            return root;
+        }
+
+        // Print the current node's playerId as we visit it
+        cout << root->Game_ID << " -> ";
+
+        // If we find the player, print the found message and return
+        if (root->Game_ID == Id) {
+            cout << "Game found!" << endl;
             return root;
         }
 
@@ -91,10 +187,21 @@ public:
     void insert(GameNode* newNode) {
         insert(root, newNode);
     }
+    int getHeight(GameNode*rootX){
+        if(rootX==nullptr){
+            return -1;
+        }
+        else{
+            return rootX->height;
+        }
+    }
+    int getBalance(GameNode*rootX){
+        return getHeight(rootX->left) - getHeight(rootX->right);
+    }
 
     GameNode* getRoot() {
         return root;
-    }
+    }   
 
 
     GameNode* search(const string& Game_ID) {
@@ -114,9 +221,7 @@ public:
         while (getline(file, line)) {
             stringstream ss(line);
             GameNode* newNode = new GameNode();
-            ss >> newNode->Game_ID;
-            ss.ignore(); // Ignore the space or newline
-
+            getline(ss, newNode->Game_ID, ',');
             getline(ss, newNode->name, ',');
             getline(ss, newNode->developer, ',');
             getline(ss, newNode->publisher, ',');
@@ -146,6 +251,7 @@ public:
     string Game_Id;
     float hoursPlayed;
     int achievements;
+    int height;
     GamePlayedNode* left;
     GamePlayedNode* right;
 
@@ -157,21 +263,6 @@ public:
 class GamesPlayedBst {
 private:
     GamePlayedNode* root;
-
-    // Insert a new node into the tree
-    void insert(GamePlayedNode*& root, GamePlayedNode* newNode) {
-        if (root == nullptr) {
-            root = newNode;
-        } else if (newNode->Game_Id < root->Game_Id) {
-            insert(root->left, newNode);
-        } else if (newNode->Game_Id > root->Game_Id) {
-            insert(root->right, newNode);
-        } else {
-            cout << "Game already exists in player's games." << endl;
-            delete newNode;
-        }
-    }
-
     // Search for a game in the tree
     GamePlayedNode* search(GamePlayedNode* root, const string& gameId) {
         if (root == nullptr || root->Game_Id == gameId) {
@@ -183,8 +274,90 @@ private:
             return search(root->right, gameId);
         }
     }
+int getHeight(GamePlayedNode* node) {
+        return node ? node->height : -1;
+    }
 
-    // Delete a node from the tree
+    // Calculate the balance factor of a node
+    int getBalance(GamePlayedNode* node) {
+        return node ? getHeight(node->left) - getHeight(node->right) : 0;
+    }
+
+    // Update the height of a node
+    void updateHeight(GamePlayedNode* node) {
+        node->height = 1 + max(getHeight(node->left), getHeight(node->right));
+    }
+
+    // Perform a right rotation on the subtree rooted with y
+    GamePlayedNode* rotateRight(GamePlayedNode* y) {
+        GamePlayedNode* x = y->left;
+        GamePlayedNode* T2 = x->right;
+
+        // Perform rotation
+        x->right = y;
+        y->left = T2;
+
+        // Update heights
+        updateHeight(y);
+        updateHeight(x);
+
+        // Return new root
+        return x;
+    }
+
+    // Perform a left rotation on the subtree rooted with x
+    GamePlayedNode* rotateLeft(GamePlayedNode* x) {
+        GamePlayedNode* y = x->right;
+        GamePlayedNode* T2 = y->left;
+
+        // Perform rotation
+        y->left = x;
+        x->right = T2;
+
+        // Update heights
+        updateHeight(x);
+        updateHeight(y);
+
+        // Return new root
+        return y;
+    }
+
+
+    
+    // Insert a new node into the AVL tree
+     void insert(GamePlayedNode*& root, GamePlayedNode* newNode) {
+        if (root == nullptr) {
+            root = newNode;
+            return;
+        } else if (newNode->Game_Id < root->Game_Id) {
+            insert(root->left, newNode);
+        } else if (newNode->Game_Id > root->Game_Id) {
+            insert(root->right, newNode);
+        } else {
+            cout << "Game already exists" << endl;
+            delete newNode;
+        }
+        root->height= max(getHeight(root->left),getHeight(root->right))+1;
+        if(getBalance(root)==2){
+            if(getBalance(root->left)>=0){
+                root=rotateRight(root);
+            }
+            else{
+                root->left=rotateLeft(root->left);
+                root=rotateRight(root);
+            }
+        }
+        else if(getBalance(root)==-2){
+            if(getBalance(root->right)<=0){
+                root=rotateLeft(root);
+            }
+            else{
+                root->right=rotateRight(root->right);
+                root=rotateLeft(root);
+            }
+        }
+    }
+    // Delete a node from the AVL tree
     GamePlayedNode* deleteNode(GamePlayedNode* root, const string& gameId) {
         if (root == nullptr) return root;
 
@@ -194,16 +367,12 @@ private:
             root->right = deleteNode(root->right, gameId);
         } else {
             // Node to be deleted found
-            if (root->left == nullptr) {
-                GamePlayedNode* temp = root->right;
-                delete root;
-                return temp;
-            } else if (root->right == nullptr) {
-                GamePlayedNode* temp = root->left;
+            if (root->left == nullptr || root->right == nullptr) {
+                GamePlayedNode* temp = root->left ? root->left : root->right;
                 delete root;
                 return temp;
             } else {
-                // Node with two children, get the inorder successor (smallest in the right subtree)
+                // Node with two children, get the inorder successor
                 GamePlayedNode* smallest = getSmallest(root->right);
                 root->Game_Id = smallest->Game_Id;
                 root->hoursPlayed = smallest->hoursPlayed;
@@ -211,12 +380,31 @@ private:
                 root->right = deleteNode(root->right, smallest->Game_Id);
             }
         }
+root->height= max(getHeight(root->left),getHeight(root->right))+1;
+        if(getBalance(root)==2){
+            if(getBalance(root->left)>=0){
+                root=rotateRight(root);
+            }
+            else{
+                root->left=rotateLeft(root->left);
+                root=rotateRight(root);
+            }
+        }
+        else if(getBalance(root)==-2){
+            if(getBalance(root->right)<=0){
+                root=rotateLeft(root);
+            }
+            else{
+                root->right=rotateRight(root->right);
+                root=rotateLeft(root);
+            }
+        }
         return root;
     }
 
     // Find the smallest node (for deletion)
     GamePlayedNode* getSmallest(GamePlayedNode* root) {
-        while (root && root->left != nullptr) {
+        while (root->left != nullptr) {
             root = root->left;
         }
         return root;
@@ -230,7 +418,6 @@ private:
             inOrderTraversal(node->right);
         }
     }
-
 public:
     GamesPlayedBst() : root(nullptr) {}
 
@@ -253,6 +440,7 @@ public:
     void inOrderTraversal() {
         inOrderTraversal(root);
     }
+    
 
     // Function to manually insert a game
     void insertManualGame() {
@@ -428,27 +616,31 @@ public:
         root = deleteNode(root, playerId);
     }
     void showPreorderPath(PlayerNode* root, const string& playerId) {
-    if (root == nullptr) {
-        cout << "Player not found, reached a leaf node." << endl;
-        return;
-    }
+        if (root == nullptr) {
+            cout << "Player not found, reached a leaf node." << endl;
+            return;
+        }
 
-    // Print the current node's playerId as we visit it
-    cout << root->playerId << " -> ";
+        // Print the current node's playerId as we visit it
+        cout << root->playerId << " -> ";
 
-    // If we find the player, print the found message and return
-    if (root->playerId == playerId) {
-        cout << "Player found!" << endl;
-        return;
-    }
+        // If we find the player, print the found message and return
+        if (root->playerId == playerId) {
+            cout << "Player found!" << endl;
+            return;
+        }
 
-    // Continue searching in the left or right subtree
-    if (playerId < root->playerId) {
-        showPreorderPath(root->left, playerId);
-    } else {
-        showPreorderPath(root->right, playerId);
-    }
+        // Continue searching in the left or right subtree
+        if (playerId < root->playerId) {
+            showPreorderPath(root->left, playerId);
+        } else {
+            showPreorderPath(root->right, playerId);
+        }
 }
+
+
+
+
     // Function to read player data from a file
     void readFromFile(const string& filename) {
         ifstream file(filename);
@@ -623,10 +815,11 @@ int main() {
         cout << "4. Search game\n";
         cout << "5. Add game to player's list\n";
         cout << "6. Delete game from player's list\n";
-        cout << "7. Delete game\n";
-        cout << "8. Exit\n";
-        cout << "9. Show N layers of Player Data BST\n";
-        cout << "10. Find Layer Number of Player\n"; // Added option for finding layer number
+        cout << "7. Delete player from Memmory\n";
+        cout << "8. Delete game\n";
+        cout << "9. Exit\n";
+        cout << "10. Show N layers of Player Data BST\n";
+        cout << "11. Find Layer Number of Player\n"; // Added option for finding layer number
         cout << "Enter your choice: ";
         cin >> choice;
 
@@ -650,6 +843,18 @@ int main() {
                         cout << "Player found: " << player->name << endl;
                         cout << "Preorder path taken to find the player:" << endl;
                         pdbst.showPreorderPath(pdbst.getRoot(), inputId);
+                        cout<<"Do you want to check If player has Played some Game?\n";
+                        cout<<"1.Yes\n";
+                        cout<<"2.No\n";
+                        int choice;
+                        cin>>choice;
+                        if(choice==1){
+                            cout<<"Give Game Id\n";
+                            cin>>inputId;
+
+                            player->gamesPlayedTree.search(inputId);
+                        }
+
                     } else {
                         cout << "Player not found." << endl;
                     }
@@ -661,7 +866,7 @@ int main() {
             case 4:
                 cout << "Enter Game ID to search: ";
                 cin >> inputId;
-                {
+                {   
                     GameNode* game = gdBst.search(inputId);
                     if (game) {
                         cout << "Game found: " << game->name << endl;
@@ -699,18 +904,23 @@ int main() {
                     }
                 }
                 break;
-
             case 7:
+                cout << "Enter Played ID to delete player from Memmory: ";
+                cin >> inputId;
+                pdbst.deletePlayer(inputId); // Delete game from global games list
+                break;
+
+            case 8:
                 cout << "Enter Game ID to delete from games: ";
                 cin >> inputId;
                 gdBst.deleteGame(inputId); // Delete game from global games list
                 break;
 
-            case 8:
+            case 9:
                 cout << "Exiting program." << endl;
                 break;
 
-            case 9: {
+            case 10: {
                 int nLayers;
                 cout << "Enter the number of layers to show: ";
                 cin >> nLayers;
@@ -718,7 +928,7 @@ int main() {
                 break;
             }
 
-            case 10: { // Added option to find the layer number of a player
+            case 11: { // Added option to find the layer number of a player
                 cout << "Enter Player ID to find layer number: ";
                 cin >> inputId;
                 int layer = pdbst.findLayer(pdbst.getRoot(), inputId, 0); // Call the findLayer method
@@ -735,7 +945,7 @@ int main() {
                 break;
         }
 
-    } while (choice != 8);
+    } while (choice != 9);
 
     return 0;
 }
