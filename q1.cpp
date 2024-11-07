@@ -380,7 +380,7 @@ int getHeight(GamePlayedNode* node) {
                 root->right = deleteNode(root->right, smallest->Game_Id);
             }
         }
-root->height= max(getHeight(root->left),getHeight(root->right))+1;
+        root->height= max(getHeight(root->left),getHeight(root->right))+1;
         if(getBalance(root)==2){
             if(getBalance(root->left)>=0){
                 root=rotateRight(root);
@@ -469,6 +469,7 @@ public:
     string phoneNumber;
     string email;
     string password;
+    int height;
     GamesPlayedBst gamesPlayedTree; // Tree of games played by this player
     PlayerNode* left;
     PlayerNode* right;
@@ -538,9 +539,60 @@ class PlayerDataBst {
 private:
     PlayerNode* root;
 
+    int getHeight(PlayerNode* node) {
+        return node ? node->height : -1;
+    }
+
+    // Calculate the balance factor of a node
+    int getBalance(PlayerNode* node) {
+        return node ? getHeight(node->left) - getHeight(node->right) : 0;
+    }
+
+    // Update the height of a node
+    void updateHeight(PlayerNode* node) {
+        node->height = 1 + max(getHeight(node->left), getHeight(node->right));
+    }
+
+    // Perform a right rotation
+    PlayerNode* rotateRight(PlayerNode* y) {
+        PlayerNode* x = y->left;
+        PlayerNode* T2 = x->right;
+
+        // Perform rotation
+        x->right = y;
+        y->left = T2;
+
+        // Update heights
+        updateHeight(y);
+        updateHeight(x);
+
+        // Return new root
+        return x;
+    }
+
+    // Perform a left rotation
+    PlayerNode* rotateLeft(PlayerNode* x) {
+        PlayerNode* y = x->right;
+        PlayerNode* T2 = y->left;
+
+        // Perform rotation
+        y->left = x;
+        x->right = T2;
+
+        // Update heights
+        updateHeight(x);
+        updateHeight(y);
+
+        // Return new root
+        return y;
+    }
+
+
+    // Insert a new node into the AVL tree
     void insert(PlayerNode*& root, PlayerNode* newNode) {
         if (root == nullptr) {
-            root = newNode;
+            root=newNode;
+            return;
         } else if (newNode->playerId < root->playerId) {
             insert(root->left, newNode);
         } else if (newNode->playerId > root->playerId) {
@@ -549,8 +601,81 @@ private:
             cout << "Player already exists" << endl;
             delete newNode;
         }
+        root->height= max(getHeight(root->left),getHeight(root->right))+1;
+        if(getBalance(root)==2){
+            if(getBalance(root->left)>=0){
+                root=rotateRight(root);
+            }
+            else{
+                root->left=rotateLeft(root->left);
+                root=rotateRight(root);
+            }
+        }
+        else if(getBalance(root)==-2){
+            if(getBalance(root->right)<=0){
+                root=rotateLeft(root);
+            }
+            else{
+                root->right=rotateRight(root->right);
+                root=rotateLeft(root);
+            }
+        }
     }
 
+    // Delete a node from the AVL tree
+    PlayerNode* deleteNode(PlayerNode* root, const string& playerId) {
+        if (root == nullptr) return root;
+
+        if (playerId < root->playerId) {
+            root->left = deleteNode(root->left, playerId);
+        } else if (playerId > root->playerId) {
+            root->right = deleteNode(root->right, playerId);
+        } else {
+            // Node to be deleted found
+            if (root->left == nullptr || root->right == nullptr) {
+                PlayerNode* temp = root->left ? root->left : root->right;
+                delete root;
+                return temp;
+            } else {
+                // Node with two children, get the inorder successor
+                PlayerNode* smallest = getSmallest(root->right);
+                root->playerId = smallest->playerId;
+                root->name = smallest->name;
+                root->phoneNumber = smallest->phoneNumber;
+                root->email = smallest->email;
+                root->password = smallest->password;
+                root->right = deleteNode(root->right, smallest->playerId);
+            }
+        }
+        root->height= max(getHeight(root->left),getHeight(root->right))+1;
+        if(getBalance(root)==2){
+            if(getBalance(root->left)>=0){
+                root=rotateRight(root);
+            }
+            else{
+                root->left=rotateLeft(root->left);
+                root=rotateRight(root);
+            }
+        }
+        else if(getBalance(root)==-2){
+            if(getBalance(root->right)<=0){
+                root=rotateLeft(root);
+            }
+            else{
+                root->right=rotateRight(root->right);
+                root=rotateLeft(root);
+            }
+        }
+    return root;
+    }
+
+    // Find the smallest node (for deletion)
+    PlayerNode* getSmallest(PlayerNode* root) {
+        while (root && root->left != nullptr) {
+            root = root->left;
+        }
+        return root;
+    }
     PlayerNode* search(PlayerNode* root, const string& playerId) {
         if (root == nullptr || root->playerId == playerId) {
             return root;
@@ -562,42 +687,14 @@ private:
             return search(root->right, playerId);
         }
     }
-
-    PlayerNode* getSmallest(PlayerNode* root) {
-        while (root && root->left != nullptr) {
-            root = root->left;
+    void inOrderTraversal(PlayerNode* node) {
+        if (node) {
+            inOrderTraversal(node->left);
+            cout << "Player ID: " << node->playerId << ", Name: " << node->name << endl;
+            inOrderTraversal(node->right);
         }
-        return root;
     }
 
-    PlayerNode* deleteNode(PlayerNode* root, const string& playerId) {
-        if (root == nullptr) return root;
-
-        if (playerId < root->playerId) {
-            root->left = deleteNode(root->left, playerId);
-        } else if (playerId > root->playerId) {
-            root->right = deleteNode(root->right, playerId);
-        } else {
-            if (root->left == nullptr) {
-                PlayerNode* temp = root->right;
-                delete root;
-                return temp;
-            } else if (root->right == nullptr) {
-                PlayerNode* temp = root->left;
-                delete root;
-                return temp;
-            } else {
-                PlayerNode* smallest = getSmallest(root->right);
-                root->playerId = smallest->playerId;
-                root->name = smallest->name;
-                root->phoneNumber = smallest->phoneNumber;
-                root->email = smallest->email;
-                root->password = smallest->password;
-                root->right = deleteNode(root->right, smallest->playerId);
-            }
-        }
-        return root;
-    }
 
 public:
     PlayerDataBst() : root(nullptr) {}
@@ -615,6 +712,36 @@ public:
     void deletePlayer(const string& playerId) {
         root = deleteNode(root, playerId);
     }
+    void insertManualPlayer() {
+        PlayerNode* newNode = new PlayerNode();
+        cout << "Enter Player ID: "; cin >> newNode->playerId;
+        cin.ignore(); // Clear input buffer
+        cout << "Enter Name: "; getline(cin, newNode->name);
+        cout << "Enter Phone Number: "; getline(cin, newNode->phoneNumber);
+        cout << "Enter Email: "; getline(cin, newNode->email);
+        cout << "Enter Password: "; getline(cin, newNode->password);
+
+        // Adding games played for the player
+        char addMoreGames;
+        do {
+            string gameId;
+            float hoursPlayed;
+            int achievements;
+            cout << "Enter Game ID: "; cin >> gameId;
+            cout << "Enter Hours Played: "; cin >> hoursPlayed;
+            cout << "Enter Achievements: "; cin >> achievements;
+            GamePlayedNode* gameNode = new GamePlayedNode(gameId, hoursPlayed, achievements);
+            newNode->gamesPlayedTree.insert(gameNode);
+
+            cout << "Do you want to add another game? (y/n): ";
+            cin >> addMoreGames;
+        } while (addMoreGames == 'y' || addMoreGames == 'Y');
+
+        insert(newNode);
+        cout << "Player added successfully!" << endl;
+    }
+
+
     void showPreorderPath(PlayerNode* root, const string& playerId) {
         if (root == nullptr) {
             cout << "Player not found, reached a leaf node." << endl;
@@ -752,46 +879,6 @@ public:
     }
 
 
-    void insertManualPlayer() {
-        PlayerNode* newNode = new PlayerNode();
-        cout << "Enter Player ID: "; cin >> newNode->playerId;
-        cin.ignore(); // Clear input buffer
-        cout << "Enter Name: "; getline(cin, newNode->name);
-        cout << "Enter Phone Number: "; getline(cin, newNode->phoneNumber);
-        cout << "Enter Email: "; getline(cin, newNode->email);
-        cout << "Enter Password: "; getline(cin, newNode->password);
-
-        // Adding games played for the player
-        char addMoreGames;
-        do {
-            string gameId;
-            float hoursPlayed;
-            int achievements;
-            cout << "Enter Game ID: "; cin >> gameId;
-            cout << "Enter Hours Played: "; cin >> hoursPlayed;
-            cout << "Enter Achievements: "; cin >> achievements;
-            GamePlayedNode* gameNode = new GamePlayedNode(gameId, hoursPlayed, achievements);
-            newNode->gamesPlayedTree.insert(gameNode);
-
-            cout << "Do you want to add another game? (y/n): ";
-            cin >> addMoreGames;
-        } while (addMoreGames == 'y' || addMoreGames == 'Y');
-
-        insert(newNode);
-        cout << "Player added successfully!" << endl;
-    }
-
-
-    // Example in-order traversal for debugging
-    void inOrderTraversal(PlayerNode* node) {
-        if (node) {
-            inOrderTraversal(node->left);
-            cout << "Player ID: " << node->playerId << ", Name: " << node->name << endl;
-            cout << "Games played by " << node->name << ":" << endl;
-            node->gamesPlayedTree.inOrderTraversal();
-            inOrderTraversal(node->right);
-        }
-    }
 
     void inOrderTraversal() {
         inOrderTraversal(root);
@@ -813,13 +900,11 @@ int main() {
         cout << "2. View all games\n";
         cout << "3. Search player\n";
         cout << "4. Search game\n";
-        cout << "5. Add game to player's list\n";
-        cout << "6. Delete game from player's list\n";
-        cout << "7. Delete player from Memmory\n";
-        cout << "8. Delete game\n";
+        cout << "5. Delete player from Memmory\n";
+        cout << "6. Delete game\n";
+        cout << "7. Show N layers of Player Data BST\n";
+        cout << "8. Find Layer Number of Player\n"; // Added option for finding layer number
         cout << "9. Exit\n";
-        cout << "10. Show N layers of Player Data BST\n";
-        cout << "11. Find Layer Number of Player\n"; // Added option for finding layer number
         cout << "Enter your choice: ";
         cin >> choice;
 
@@ -843,18 +928,45 @@ int main() {
                         cout << "Player found: " << player->name << endl;
                         cout << "Preorder path taken to find the player:" << endl;
                         pdbst.showPreorderPath(pdbst.getRoot(), inputId);
-                        cout<<"Do you want to check If player has Played some Game?\n";
-                        cout<<"1.Yes\n";
-                        cout<<"2.No\n";
-                        int choice;
-                        cin>>choice;
-                        if(choice==1){
-                            cout<<"Give Game Id\n";
-                            cin>>inputId;
+                        int choice=1;
+                        while(choice!=5){
+                            cout<<"1. Check if player has Played some Game?\n";
+                            cout<<"2. Get All Player Details\n";
+                            cout<<"3. Add a Game to The Player Data\n";
+                            cout<<"4. Delete a Game from Player Data\n";
+                            cout<<"5. Exit to Main Menu\n";
+                            cin>>choice;
+                            if(choice==1){
+                                cout<<"Give Game's Id\n";
+                                cin>>inputId;
 
-                            player->gamesPlayedTree.search(inputId);
+                                GamePlayedNode* gamePlayed=player->gamesPlayedTree.search(inputId);
+                                if(gamePlayed!=nullptr){
+                                    cout<<"Player Has Played this Games\n";
+                                }
+                                else{
+                                    cout<<"Player Hasnt played This Game\n";
+                                }
+                            }
+                            else if(choice==2){
+                                cout<<"Player Details\n";
+                                cout << "Player ID: " << player->playerId << endl;
+                                cout << "Player Name: " << player->name << endl;
+                                cout << "Player Phone Number:  " << player->phoneNumber << endl;
+                                cout << "Player Password: " << player->password << endl;
+                                cout << "Games played by " << player->name << ":" << endl;
+                                player->gamesPlayedTree.inOrderTraversal();
+                            }
+                            else if(choice==3){
+                                player->gamesPlayedTree.insertManualGame();
+                            }
+                            else if(choice==4){
+                                cout << "Enter Game ID to delete: ";
+                                string gameId;
+                                cin >> gameId;
+                                player->gamesPlayedTree.deleteGame(gameId);
+                            }
                         }
-
                     } else {
                         cout << "Player not found." << endl;
                     }
@@ -875,42 +987,13 @@ int main() {
                     }
                 }
                 break;
-
             case 5:
-                cout << "Enter Player ID to add game: ";
-                cin >> inputId;
-                {
-                    PlayerNode* player = pdbst.search(inputId);
-                    if (player) {
-                        player->gamesPlayedTree.insertManualGame(); // Add a game to player's list
-                    } else {
-                        cout << "Player not found." << endl;
-                    }
-                }
-                break;
-
-            case 6:
-                cout << "Enter Player ID to delete game: ";
-                cin >> inputId;
-                {
-                    PlayerNode* player = pdbst.search(inputId);
-                    if (player) {
-                        cout << "Enter Game ID to delete: ";
-                        string gameId;
-                        cin >> gameId;
-                        player->gamesPlayedTree.deleteGame(gameId); // Delete a game from player's list
-                    } else {
-                        cout << "Player not found." << endl;
-                    }
-                }
-                break;
-            case 7:
                 cout << "Enter Played ID to delete player from Memmory: ";
                 cin >> inputId;
                 pdbst.deletePlayer(inputId); // Delete game from global games list
                 break;
 
-            case 8:
+            case 6:
                 cout << "Enter Game ID to delete from games: ";
                 cin >> inputId;
                 gdBst.deleteGame(inputId); // Delete game from global games list
@@ -920,7 +1003,7 @@ int main() {
                 cout << "Exiting program." << endl;
                 break;
 
-            case 10: {
+            case 7: {
                 int nLayers;
                 cout << "Enter the number of layers to show: ";
                 cin >> nLayers;
@@ -928,7 +1011,7 @@ int main() {
                 break;
             }
 
-            case 11: { // Added option to find the layer number of a player
+            case 8: { // Added option to find the layer number of a player
                 cout << "Enter Player ID to find layer number: ";
                 cin >> inputId;
                 int layer = pdbst.findLayer(pdbst.getRoot(), inputId, 0); // Call the findLayer method
